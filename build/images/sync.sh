@@ -29,19 +29,29 @@ fi
 creds=""
 [[ "${image}" == artifactory.algol60.net/* ]] && creds="${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}"
 
+registries_d="$(pwd)/registries.d"
+mkdir -p "${registries_d}"
+test -f "${registries_d}/enable-signatures.yaml" || cat <<-EOF >"${registries_d}/enable-signatures.yaml"
+default-docker:
+    use-sigstore-attachments: true
+EOF
+
 docker run --rm \
     -u "$(id -u):$(id -g)" \
     --mount "type=bind,source=$(realpath "$workdir"),destination=/data" \
+    --mount "type=bind,source=${registries_d},destination=/etc/containers/registries.d" \
     "$SKOPEO_IMAGE" \
     --command-timeout 60s \
     --override-os linux \
     --override-arch amd64 \
+    --registries.d /etc/containers/registries.d \
     copy \
     --retry-times 5 \
     ${creds:+--src-creds "${creds}"} \
     "docker://$image" \
     dir:/data \
     >&2 || exit 255
+
 
 # Ensure intermediate directories exist
 mkdir -p "$(dirname "$destdir")"

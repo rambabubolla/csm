@@ -233,11 +233,21 @@ function skopeo-sync() {
     [[ -d "$src" ]] || return 0
 
     nexus-setdefault-credential
+
+    registries_d="$(pwd)/registries.d"
+    mkdir -p "${registries_d}"
+    test -f "${registries_d}/enable-signatures.yaml" || cat <<-EOF >"${registries_d}/enable-signatures.yaml"
+default-docker:
+    use-sigstore-attachments: true
+EOF
+
     # Note: Have to default NEXUS_USERNAME below since
     # nexus-setdefault-credential returns immediately if NEXUS_PASSWORD is set.
     podman run --rm "${podman_run_flags[@]}" \
         -v "$(realpath "$src"):/image:ro" \
+        -v "${registries_d}:/etc/containers/registries.d:ro" \
         "$SKOPEO_IMAGE" \
+        --registries.d /etc/containers/registries.d \
         sync --scoped --src dir --dest docker \
         --dest-creds "${NEXUS_USERNAME:-admin}:${NEXUS_PASSWORD}" \
         --dest-tls-verify=false \
