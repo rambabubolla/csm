@@ -126,19 +126,20 @@ pipeline {
         }
 
         stage('Release') {
-            when { tag "v*" }
+            // when { tag "v*" }
 
             environment {
                 RELEASE_NAME = "csm"
-                SLACK_CHANNEL_NOTIFY = "casm_release_management"
-                SLACK_CHANNEL_ALERTS = "csm-release-alerts"
+                SLACK_CHANNEL_NOTIFY = "@mikhail.tupitsyn"
+                SLACK_CHANNEL_ALERTS = "@mikhail.tupitsyn"
             }
 
             stages {
                 stage('Init') {
                     steps{
                         script {
-                            env.RELEASE_VERSION = sh(script: './version.sh', returnStdout: true).trim()
+                            env.RELEASE_VERSION = "1.6.0-imagesig.2"
+                            //sh(script: './version.sh', returnStdout: true).trim()
                             slackSend(channel: env.SLACK_CHANNEL_NOTIFY, color: "#439fe0", message: "<${env.BUILD_URL}|CSM ${env.RELEASE_VERSION}> - Build starting, see #${env.SLACK_CHANNEL_ALERTS} for details")
                             slackSend(channel: env.SLACK_CHANNEL_ALERTS, color: "#439fe0", message: "<${env.BUILD_URL}|CSM ${env.RELEASE_VERSION}> - Build starting")
                         }
@@ -230,11 +231,14 @@ pipeline {
                         slackSend(channel: env.SLACK_CHANNEL_NOTIFY, color: "good", message: "<${env.BUILD_URL}|CSM ${env.RELEASE_VERSION}> - :white_check_mark: Success!\n- Release distribution: <${env.RELEASE_URL}|${env.RELEASE_NAME}-${env.RELEASE_VERSION}.tar.gz>\n- Snyk results: <${env.SNYK_RESULTS_SHEET_URL}|${env.SNYK_RESULTS_SHEET}> (raw scan results: <${env.SNYK_RESULTS_URL}|${env.SNYK_RESULTS_FILENAME}>)")
                         build(job: jenkinsUtils.findJobName("Cray-HPE", "csm-vshasta-deploy", env.CSM_VSHASTA_DEPLOY_BRANCH), wait: false, parameters: [
                             string(name: "CSM_RELEASE", value: env.RELEASE_VERSION),
-                            string(name: "ENVIRONMENT", value: env.CSM_VSHASTA_DEPLOY_ENVIRONMENT)
+                            string(name: "ENVIRONMENT", value: env.CSM_VSHASTA_DEPLOY_ENVIRONMENT),
+                            string(name: "SLACK_REPORT_CHANNEL", value: "@mikhail.tupitsyn"),
+                            string(name: "PIT_IMAGE_ID", value: sh(returnStdout: true, script: 'source ./assets.sh; echo $PIT_IMAGE_ID').trim()),
+                            string(name: "DOCS_CSM_VERSION", value: "1.6.11~10~g82bfa8404-1")
                         ])
-                        build(job: "Cray-HPE/csm-release-internal-upload/main", wait: false, parameters: [
-                            string(name: "RELEASE_VERSION", value: "${env.RELEASE_VERSION}"),
-                        ])
+                        // build(job: "Cray-HPE/csm-release-internal-upload/main", wait: false, parameters: [
+                        //     string(name: "RELEASE_VERSION", value: "${env.RELEASE_VERSION}"),
+                        // ])
                     }
                 }
                 failure {
